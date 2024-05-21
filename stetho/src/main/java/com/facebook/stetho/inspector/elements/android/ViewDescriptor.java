@@ -40,6 +40,9 @@ import javax.annotation.concurrent.GuardedBy;
 final class ViewDescriptor extends AbstractChainedDescriptor<View>
     implements HighlightableDescriptor<View> {
   private static final String ID_NAME = "id";
+  private static final String ID_NAME_NAME = "id_name";
+  private static final String LAYOUT_ID_NAME = "layout";
+  private static final String LAYOUT_ID_NAME_NAME = "layout_name";
   private static final String NONE_VALUE = "(none)";
   private static final String NONE_MAPPING = "<no mapping>";
   private static final String VIEW_STYLE_RULE_NAME = "<this_view>";
@@ -49,9 +52,20 @@ final class ViewDescriptor extends AbstractChainedDescriptor<View>
 
   private static final boolean sHasSupportNodeInfo;
 
+  private static final Field sLayoutIdField;
+
   static {
     sHasSupportNodeInfo = ReflectionUtil.tryGetClassForName(
         "androidx.core.view.accessibility.AccessibilityNodeInfoCompat") != null;
+    Field layoutIdField = null;
+      try {
+        layoutIdField = View.class.getDeclaredField("mSourceLayoutId");
+        layoutIdField.setAccessible(true);
+      } catch (NoSuchFieldException e) {
+          // ignore
+        LogUtil.e(e, "failed to get mSourceLayoutId");
+      }
+      sLayoutIdField = layoutIdField;
   }
 
   /**
@@ -140,9 +154,19 @@ final class ViewDescriptor extends AbstractChainedDescriptor<View>
 
   @Override
   protected void onGetAttributes(View element, AttributeAccumulator attributes) {
-    String id = getIdAttribute(element);
-    if (id != null) {
-      attributes.store(ID_NAME, id);
+    int id = element.getId();
+    if (id != View.NO_ID) {
+      attributes.store(ID_NAME, String.format("0x%08x", id));
+    }
+    String id_name = getIdAttribute(element);
+    if (id_name != null) {
+      attributes.store(ID_NAME_NAME, id_name);
+    }
+    int layout_id = getLayoutId(element);
+    if (layout_id != 0) {
+      attributes.store(LAYOUT_ID_NAME, String.format("0x%08x", layout_id));
+      attributes.store(LAYOUT_ID_NAME_NAME,
+              ResourcesUtil.getIdStringQuietly(element, element.getResources(), layout_id));
     }
   }
 
@@ -163,6 +187,17 @@ final class ViewDescriptor extends AbstractChainedDescriptor<View>
       return null;
     }
     return ResourcesUtil.getIdStringQuietly(element, element.getResources(), id);
+  }
+
+  private static int getLayoutId(View view) {
+    if (sLayoutIdField != null) {
+      try {
+        return sLayoutIdField.getInt(view);
+      } catch (IllegalAccessException e) {
+        LogUtil.e(e, "get layout id");
+      }
+    }
+    return 0;
   }
 
   @Override
