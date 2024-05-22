@@ -43,7 +43,7 @@ import java.util.Set;
  */
 public class JsRuntimeReplFactoryBuilder {
   public interface ScopeInitializer {
-    void onInit(ScriptableObject scope);
+    void onInit(Context jsContext, ScriptableObject scope);
   }
 
   public interface RuntimeFinalizer {
@@ -197,7 +197,7 @@ public class JsRuntimeReplFactoryBuilder {
       importVariables(scope);
       importFunctions(scope);
       if (mInitializer != null) {
-        mInitializer.onInit(scope);
+        mInitializer.onInit(jsContext, scope);
       }
     } catch (StethoJsException e) {
       String message = String.format("%s\n%s", e.getMessage(), android.util.Log.getStackTraceString(e));
