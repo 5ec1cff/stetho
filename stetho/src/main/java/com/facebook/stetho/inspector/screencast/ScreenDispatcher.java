@@ -74,6 +74,7 @@ public class ScreenDispatcher extends PeerService implements InspectingObject.On
         public void onDraw() {
             try {
                 ViewRootImpl vri = ((ViewHidden) (Object) target).getViewRootImpl();
+                if (vri == null || vri.mSurface == null) return;
                 if (!vri.mSurface.isValid()) return;
                 int viewWidth = target.getWidth();
                 int viewHeight = target.getHeight();
