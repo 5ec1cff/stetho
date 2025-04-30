@@ -8,6 +8,7 @@ plugins {
 
 android {
     compileSdk = rootProject.extra["compileSdkVersion"] as Int
+    namespace = "com.facebook.stetho"
 
     defaultConfig {
         minSdk = 24

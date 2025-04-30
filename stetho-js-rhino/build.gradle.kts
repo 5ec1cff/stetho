@@ -5,6 +5,7 @@ plugins {
 
 android {
     compileSdk = rootProject.extra["compileSdkVersion"] as Int
+    namespace = "com.facebook.stetho"
 
     defaultConfig {
         minSdk = 24
@@ -69,7 +70,7 @@ afterEvaluate {
 dependencies {
     implementation(project(":stetho"))
     implementation("com.google.code.findbugs:jsr305:3.0.2")
-    implementation("org.mozilla:rhino:1.7.15-SNAPSHOT")
+    implementation("org.mozilla:rhino-all:1.8.1-SNAPSHOT")
     implementation("androidx.annotation:annotation:1.6.0")
 
     testImplementation("junit:junit:4.13.2")

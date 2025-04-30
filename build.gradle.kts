@@ -5,11 +5,11 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:7.4.2")
+        classpath("com.android.tools.build:gradle:8.8.0")
     }
     extra.apply {
-        set("compileSdkVersion", 33)
-        set("targetSdkVersion", 33)
+        set("compileSdkVersion", 35)
+        set("targetSdkVersion", 35)
         set("aaa", 11)
     }
 }

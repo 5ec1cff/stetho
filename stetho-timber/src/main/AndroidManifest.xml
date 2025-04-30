@@ -6,10 +6,8 @@
   -->
 
 <manifest
-        xmlns:tools="http://schemas.android.com/tools"
-        package="com.facebook.stetho.timber">
+        xmlns:tools="http://schemas.android.com/tools">
 
-    //fixes Timber Library min sdk issue
     <uses-sdk tools:overrideLibrary="timber.log"/>
 
     <application/>
