@@ -8,6 +8,7 @@
 package com.facebook.stetho.inspector.protocol.module;
 
 import android.content.Context;
+import android.os.Bundle;
 import android.os.Process;
 
 import com.facebook.stetho.common.LogRedirector;
@@ -380,10 +381,21 @@ public class Runtime implements ChromeDevtoolsDomain {
         GetPropertiesResponse response = new GetPropertiesResponse();
         response.result = new ArrayList<>();
         PropertyDescriptor propertyDescriptor = new PropertyDescriptor();
-        propertyDescriptor.name = "type";
+        propertyDescriptor.name = "[[class]]";
         propertyDescriptor.isOwn = true;
         propertyDescriptor.value = objectForRemote(object.getClass().getName());
         response.result.add(propertyDescriptor);
+        if (object instanceof List) {
+          response.result.addAll(getPropertiesForIterable((List) object, /* enumerate */ true));
+        } else if (object instanceof Set) {
+          response.result.addAll(getPropertiesForIterable((Set) object, /* enumerate */ false));
+        } else if (object instanceof Map) {
+          response.result.addAll(getPropertiesForMap(object));
+        } else if (object instanceof Bundle) {
+          response.result.addAll(getPropertiesForBundle((Bundle) object));
+        } else if (object instanceof Class<?>) {
+          response.result.addAll(getPropertiesForClass((Class<?>) object));
+        }
         return response;
       }
 
@@ -393,15 +405,10 @@ public class Runtime implements ChromeDevtoolsDomain {
 
       if (object instanceof ObjectProtoContainer) {
         return getPropertiesForProtoContainer((ObjectProtoContainer) object);
-      } else if (object instanceof List) {
-        return getPropertiesForIterable((List) object, /* enumerate */ true);
-      } else if (object instanceof Set) {
-        return getPropertiesForIterable((Set) object, /* enumerate */ false);
-      } else if (object instanceof Map) {
-        return getPropertiesForMap(object);
-      } else {
-        return getPropertiesForObject(object);
       }
+      GetPropertiesResponse response = new GetPropertiesResponse();
+      response.result = getPropertiesForObject(object);
+      return response;
     }
 
     private List<?> arrayToList(Object object) {
@@ -444,8 +451,7 @@ public class Runtime implements ChromeDevtoolsDomain {
       return response;
     }
 
-    private GetPropertiesResponse getPropertiesForIterable(Iterable<?> object, boolean enumerate) {
-      GetPropertiesResponse response = new GetPropertiesResponse();
+    private List<PropertyDescriptor> getPropertiesForIterable(Iterable<?> object, boolean enumerate) {
       List<PropertyDescriptor> properties = new ArrayList<>();
 
       int index = 0;
@@ -453,31 +459,69 @@ public class Runtime implements ChromeDevtoolsDomain {
         PropertyDescriptor property = new PropertyDescriptor();
         property.name = enumerate ? String.valueOf(index++) : null;
         property.value = objectForRemote(value);
+        property.isOwn = true;
         properties.add(property);
       }
 
-      response.result = properties;
-      return response;
+      return properties;
     }
 
-    private GetPropertiesResponse getPropertiesForMap(Object object) {
-      GetPropertiesResponse response = new GetPropertiesResponse();
+    private List<PropertyDescriptor> getPropertiesForMap(Object object) {
       List<PropertyDescriptor> properties = new ArrayList<>();
 
       for (Map.Entry<?, ?> entry : ((Map<?, ?>) object).entrySet()) {
         PropertyDescriptor property = new PropertyDescriptor();
-        property.name = String.valueOf(entry.getKey());
+        property.name = "[map] " + entry.getKey();
         property.value = objectForRemote(entry.getValue());
+        property.isOwn = true;
         properties.add(property);
       }
 
-      response.result = properties;
-      return response;
+      return properties;
     }
 
-    private GetPropertiesResponse getPropertiesForObject(Object object) {
-      GetPropertiesResponse response = new GetPropertiesResponse();
+    private List<PropertyDescriptor> getPropertiesForBundle(Bundle object) {
       List<PropertyDescriptor> properties = new ArrayList<>();
+
+      for (String key : object.keySet()) {
+        PropertyDescriptor property = new PropertyDescriptor();
+        property.name = "[bundle] " + key;
+        property.value = objectForRemote(object.get(key));
+        property.isOwn = true;
+        properties.add(property);
+      }
+
+      return properties;
+    }
+    private List<PropertyDescriptor> getPropertiesForClass(Class<?> clazz) {
+      List<PropertyDescriptor> properties = new ArrayList<>();
+      Field[] fields = ReflectionUtil.getDeclaredFields(clazz);
+      for (Field field : fields) {
+        if (!Modifier.isStatic(field.getModifiers())) {
+          continue;
+        }
+        field.setAccessible(true);
+        try {
+          PropertyDescriptor property = new PropertyDescriptor();
+          property.name = "[static]" + field.getName();
+          if (field.getType() == null) {
+            property.value = objectForRemote(Runtime.UNDEFINED);
+          } else {
+            Object fieldValue = field.get(null);
+            property.value = objectForRemote(fieldValue);
+          }
+          property.isOwn = true;
+          properties.add(property);
+        } catch (IllegalAccessException e) {
+          throw new RuntimeException(e);
+        }
+      }
+      return properties;
+    }
+
+    private List<PropertyDescriptor> getPropertiesForObject(Object object) {
+      List<PropertyDescriptor> properties = new ArrayList<>();
+      int level = 0;
       for (
           Class<?> declaringClass = object.getClass();
           declaringClass != null;
@@ -494,7 +538,7 @@ public class Runtime implements ChromeDevtoolsDomain {
           field.setAccessible(true);
           try {
             PropertyDescriptor property = new PropertyDescriptor();
-            property.name = prefix + field.getName();
+            property.name = "[" + level + "]" + prefix + field.getName();
             if (field.getType() == null) {
               property.value = objectForRemote(Runtime.UNDEFINED);
             } else {
@@ -506,9 +550,9 @@ public class Runtime implements ChromeDevtoolsDomain {
             throw new RuntimeException(e);
           }
         }
+        level++;
       }
-      response.result = properties;
-      return response;
+      return properties;
     }
   }
 
